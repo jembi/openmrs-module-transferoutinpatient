@@ -3,6 +3,7 @@
  */
 package org.openmrs.module.tracpatienttransfer.web.controller;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -14,9 +15,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openmrs.DrugOrder;
 import org.openmrs.Obs;
+import org.openmrs.Order;
+import org.openmrs.OrderType;
 import org.openmrs.Patient;
 import org.openmrs.PatientProgram;
 import org.openmrs.Person;
+import org.openmrs.api.OrderContext;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.mohtracportal.util.MohTracUtil;
 import org.openmrs.module.tracpatienttransfer.service.PatientTransferService;
@@ -171,31 +175,36 @@ public class EPFC_ResumeCareFormController extends
 						log.info(">>>>>>>PatientProgram.....UPDATED !");
 					}
 				}
-
+				
 				// restart drugs
-				List<DrugOrder> dOrderList = Context.getOrderService()
-						.getDrugOrdersByPatient(lastObs.getPatient());
+				List<Order> orderList = Context.getOrderService().getOrders(lastObs.getPatient(), null, new OrderType(null, null, DrugOrder.class.toString()), false);
+				List<DrugOrder> dOrderList = new ArrayList<DrugOrder>();
+				
+				for(Order order: orderList) {
+					dOrderList.add((DrugOrder) order);
+				}
+				
 				for (DrugOrder dOrder : dOrderList) {
 					log.info(">>>>>>>DrugOrder......."
 							+ dOrder.isDiscontinuedRightNow()
 							+ ".........DO="
-							+ dOrder.getDiscontinuedDate()
+							+ dOrder.getDateStopped()
 							+ "...."
-							+ (dOrder.getDiscontinuedDate() == lastObs
+							+ (dOrder.getDateStopped() == lastObs
 									.getObsDatetime()) + "...Obs="
 							+ lastObs.getObsDatetime() + "----------" + dOrder);
 					DrugOrder dOrderToRestart = null;
 					if (dOrder.isDiscontinuedRightNow()
-							&& dOrder.getDiscontinuedDate().compareTo(
+							&& dOrder.getDateStopped().compareTo(
 									lastObs.getObsDatetime()) == 0) {
 						dOrderToRestart = dOrder;
-						dOrderToRestart.setDiscontinued(false);
-						dOrderToRestart.setDiscontinuedBy(null);
-						dOrderToRestart.setDiscontinuedDate(null);
+						dOrderToRestart.setAction(Order.Action.REVISE);
+						//dOrderToRestart.setStoppedBy(null);
+						dOrderToRestart.setAutoExpireDate(null);
 						log
 								.info(">>>>>>>PatientProgram.....Trying to update DrugOrder...."
 										+ dOrderToRestart);
-						Context.getOrderService().updateOrder(dOrderToRestart);
+						Context.getOrderService().saveOrder(dOrderToRestart, null);
 						log.info(">>>>>>>PatientProgram.....UPDATED !");
 					}
 				}

@@ -4,6 +4,7 @@
 package org.openmrs.module.tracpatienttransfer.web.controller;
 
 import java.text.DateFormat;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -13,11 +14,14 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.hibernate.mapping.Array;
 import org.openmrs.Concept;
 import org.openmrs.DrugOrder;
 import org.openmrs.Encounter;
 import org.openmrs.Location;
 import org.openmrs.Obs;
+import org.openmrs.Order;
+import org.openmrs.OrderType;
 import org.openmrs.Patient;
 import org.openmrs.PatientProgram;
 import org.openmrs.User;
@@ -167,26 +171,31 @@ public class PatientExitFromCareFormController extends
 	private boolean stopAllOrders(int patientId, Date discontinuedDate,
 			HttpServletRequest request) {
 		Patient p = Context.getPatientService().getPatient(patientId);
-		List<DrugOrder> drugOrders = Context.getOrderService()
-				.getDrugOrdersByPatient(p);
+		List<Order> orderList = Context.getOrderService().getOrders(p, null, new OrderType(null, null, DrugOrder.class.toString()), false);
+		List<DrugOrder> drugOrders = new ArrayList<DrugOrder>();
+		for(Order order: orderList) {
+			drugOrders.add((DrugOrder) order);
+		}
+		
+		
 		Concept discontinuedReason = Context.getConceptService().getConcept(
 				Integer.parseInt(request.getParameter("reasonExitCare")));
 		try {
 			for (DrugOrder drOr : drugOrders) {
 				DrugOrder dr = null;
-				if (!drOr.getDiscontinued()) {
+				if (drOr.isActive()) {
 					dr = drOr;
-					dr.setDiscontinued(true);
-					dr.setDiscontinuedBy(Context.getAuthenticatedUser());
-					dr.setDiscontinuedDate(discontinuedDate);
-					dr.setDiscontinuedReason(discontinuedReason);
+					dr.setAction(Order.Action.DISCONTINUE);
+					//dr.setDiscontinuedBy(Context.getAuthenticatedUser());
+					dr.setAutoExpireDate(new Date());
+					//dr.setDiscontinuedReason(discontinuedReason);
 
 					log
 							.info(">>>>>>>>>>>>PatientExitedFromCare>>> Trying to stop DrugOrder#"
 									+ dr.getOrderId()
 									+ " for Patient#"
 									+ dr.getPatient().getPatientId());
-					Context.getOrderService().updateOrder(dr);
+					Context.getOrderService().saveOrder(dr, null);
 					log
 							.info(">>>>>>>>>>>>PatientExitedFromCare>>> Order stopped");
 				}
