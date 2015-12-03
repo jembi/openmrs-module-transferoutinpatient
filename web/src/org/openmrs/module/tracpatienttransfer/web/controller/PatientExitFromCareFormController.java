@@ -14,7 +14,6 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.hibernate.mapping.Array;
 import org.openmrs.Concept;
 import org.openmrs.DrugOrder;
 import org.openmrs.Encounter;
@@ -24,6 +23,7 @@ import org.openmrs.Order;
 import org.openmrs.OrderType;
 import org.openmrs.Patient;
 import org.openmrs.PatientProgram;
+import org.openmrs.Provider;
 import org.openmrs.User;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.EncounterService;
@@ -183,13 +183,11 @@ public class PatientExitFromCareFormController extends
 		try {
 			for (DrugOrder drOr : drugOrders) {
 				DrugOrder dr = null;
-				if (drOr.isActive()) {
+				if (!dr.isDiscontinued(new Date())) {
 					dr = drOr;
 					dr.setAction(Order.Action.DISCONTINUE);
-					//dr.setDiscontinuedBy(Context.getAuthenticatedUser());
-					dr.setAutoExpireDate(new Date());
-					//dr.setDiscontinuedReason(discontinuedReason);
-
+					Context.getOrderService().discontinueOrder(dr, discontinuedReason, new Date(), (Provider) Context.getProviderService().getProvidersByPerson(Context.getAuthenticatedUser().getPerson()).toArray()[0], drOr.getEncounter());
+					
 					log
 							.info(">>>>>>>>>>>>PatientExitedFromCare>>> Trying to stop DrugOrder#"
 									+ dr.getOrderId()
