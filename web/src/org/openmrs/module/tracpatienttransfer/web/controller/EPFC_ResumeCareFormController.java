@@ -199,8 +199,6 @@ public class EPFC_ResumeCareFormController extends
 									lastObs.getObsDatetime()) == 0) {
 						dOrderToRestart = dOrder;
 						dOrderToRestart.setAction(Order.Action.REVISE);
-						//dOrderToRestart.setStoppedBy(null);
-						dOrderToRestart.setAutoExpireDate(null);
 						log
 								.info(">>>>>>>PatientProgram.....Trying to update DrugOrder...."
 										+ dOrderToRestart);
